@@ -13,7 +13,7 @@ use \lithium\data\Connections;
 
 class Model extends \lithium\data\Model {
 
-	protected $originalRelations = array();
+	protected $_originalRelations = array();
 
 	protected $_alternateRelations = array();
 
@@ -22,6 +22,47 @@ class Model extends \lithium\data\Model {
 		self::_addRelations();
 		self::_connectionFilters();
 	}
+
+	/**
+	* Update relations on the model to allow changes to paramaters
+	*
+	* @param  string $type - relation type - hasMany/hasOne etc
+	* @param  array $options - relation options - same format as defined by lithium relations
+	*	EX:	
+	*	$options = array(
+	*		'Users' => array(
+	*			'limit' => 5
+	*		)
+	*	);
+	*
+	* @return array with specialties
+	*/
+	public static function updateRelation($type, $options = array(), $autoReset = TRUE){
+		// $self = static::_object();
+		// if(!empty($options) && array_key_exists($type, $self->_relationTypes)){
+		// 	if(empty($self->_originalRelations)){
+		// 		$self->_originalRelations = array(
+		// 			'default' => (array)self::relations(null, 'default'),
+		// 			'alternate' => (array)self::relations(null, 'alternate'),
+		// 		);
+		// 	}
+		// 	$self->$type = array_merge_recursive($self->$type, $options);
+		// 	$self->_relations = array();
+		// 	$self->_alternateRelations = array();
+		// 	self::_relations();
+		// }
+	}
+
+
+	/**
+	 * Reset relations to the originalRelations as specified in the model
+	 */
+	 public static function resetRelations(){
+		// $self = static::_object();
+		// $self->_relations = $self->_originalRelations['default'];
+		// $self->_alternateRelations = $self->_originalRelations['alternate'];
+	}
+
 
 	/**
 	 * Creates a relationship binding between this model and another. Overwritten to allow model to model relations seperate of data source relations.
@@ -128,6 +169,12 @@ class Model extends \lithium\data\Model {
 			if(isset($relations[$name])) {
 				return $relations[$name];
 			}
+
+			if (isset($self->_relationTypes[$name])) {
+				return array_keys(array_filter($relations, function($i) use ($name) {
+					return $i->data('type') == $name;
+				}));
+			}
 		}
 
 		return parent::relations($name);
@@ -172,6 +219,8 @@ class Model extends \lithium\data\Model {
 							$relationModel = $relation['to'];
 							$searchAssociations = array();
 							$searchValues = array();
+
+							$keys = array_keys($relation['key']);
 							$from = (string)array_shift(array_keys($relation['key']));
 							$to = (string)$relation['key'][$from];
 
