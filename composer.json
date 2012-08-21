@@ -12,7 +12,6 @@
 			"homepage": "https://github.com/brandonwestcott"
 		}
 	],
-
 	"require": {
 		"php": ">=5.3",
 		"joseym/li3_installer": "master",
