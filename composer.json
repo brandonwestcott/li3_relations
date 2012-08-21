@@ -2,7 +2,7 @@
 	"name": "brandonwestcott/li3_relations",
 	"type": "li3-libraries",
 	"description": "Lithium PHP model -> model relations",
-	"keywords": ["relations", "li3", "lithium" "models"],
+	"keywords": ["relations", "li3", "lithium", "models"],
 	"homepage": "https://github.com/brandonwestcott/li3_relations",
 	"license": "GNU General Public License",
 	"authors": [
