@@ -21,9 +21,10 @@ class Model extends \lithium\data\Model {
 	protected static $_connectionConfig = array();
 
 	public static function __init(){
+		static::_isBase(__CLASS__, true);
 		parent::__init();
-		self::_addRelations();
-		self::_connectionFilters();
+		self::_relationFilter();
+		self::_connectionFilter();
 	}
 
 	/**
@@ -68,7 +69,6 @@ class Model extends \lithium\data\Model {
 		$self->_alternateRelations = $self->_originalRelations['alternate'];
 	}
 
-
 	/**
 	 * Creates a relationship binding between this model and another. Overwritten to allow model to model relations seperate of data source relations.
 	 *
@@ -94,27 +94,21 @@ class Model extends \lithium\data\Model {
 
 		//TODO, add general exception option & add mongo exception for non embedded
 		if(!empty($targetModel)){	
+			$connection = static::connection();
+			$connectionConfig = $self::_connectionConfig();
+			$targetConnectionConfig = $targetModel::_connectionConfig();
 
 			// MongoDB source says it supports relationships, but it doesnt appear to work
 			if(!isset($config['default'])){
-				$connectionConfig = $self::_connectionConfig();
 				if(isset($connectionConfig['type']) && $connectionConfig['type'] == 'MongoDb'){
 					$config['default'] = false;
-				}
-
-				$embeddedCheck = $targetModel::meta('embedded');
-				// for use with mongodb embedded source
-				if(!empty($embeddedCheck)){
-					$config['default'] = true;
 				}
 			}
 
 			// if current Model & target join model are of same class, pass to generic lithium relation
-			$connection = static::connection();
-
 			if((!isset($config['default']) || $config['default'] == true) 
 				&& $connection::enabled('relationships') == true 
-				&& get_class($targetModel::connection()) == get_class($connection) 
+				&& $connectionConfig['type'] == $targetConnectionConfig['type']
 				&& $relationship = parent::bind($type, $name, $config)){
 					if(!empty($relationship)){
 						return $relationship;
@@ -187,7 +181,7 @@ class Model extends \lithium\data\Model {
 	/**
 	 * Filter for connection->read to take alternate relations and call a batch ::find on appropiate relation
 	 */
-	protected static function _connectionFilters(){
+	protected static function _connectionFilter(){
 		$connection = static::connection();
 
 		$connection->applyFilter('read', function($self, $params, $chain){	
@@ -388,15 +382,22 @@ class Model extends \lithium\data\Model {
 
 	protected static function _connectionConfig(){
 		if(empty(self::$_connectionConfig)){
-			$connection = self::meta('connection');
-			if(!empty($connection)){
-				self::$_connectionConfig = Connections::get($connection, array('config' => true));			
+			$self = get_called_class();
+			$vars = get_class_vars($self);
+			$meta = $vars['_meta'];
+
+			if(empty($meta['connection'])){
+				$meta['connection'] = 'default';
 			}
+
+			self::$_connectionConfig = Connections::get($meta['connection'], array('config' => true));			
 		}
 		return self::$_connectionConfig;
 	}
 
-	protected static function _addRelations(){
+
+	// find filter
+	protected static function _relationFilter(){
 		$filter = function($self, $params, $chain) {
 			$object = new $self();
 
