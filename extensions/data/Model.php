@@ -7,6 +7,7 @@
  */
 
 namespace li3_relations\extensions\data;
+
 use \lithium\core\Libraries;
 use \lithium\util\Inflector;
 use \lithium\data\Connections;
@@ -16,6 +17,8 @@ class Model extends \lithium\data\Model {
 	protected $_originalRelations = array();
 
 	protected $_alternateRelations = array();
+
+	protected static $_connectionConfig = array();
 
 	public static function __init(){
 		parent::__init();
@@ -37,20 +40,22 @@ class Model extends \lithium\data\Model {
 	*
 	* @return array with specialties
 	*/
-	public static function updateRelation($type, $options = array(), $autoReset = TRUE){
-		// $self = static::_object();
-		// if(!empty($options) && array_key_exists($type, $self->_relationTypes)){
-		// 	if(empty($self->_originalRelations)){
-		// 		$self->_originalRelations = array(
-		// 			'default' => (array)self::relations(null, 'default'),
-		// 			'alternate' => (array)self::relations(null, 'alternate'),
-		// 		);
-		// 	}
-		// 	$self->$type = array_merge_recursive($self->$type, $options);
-		// 	$self->_relations = array();
-		// 	$self->_alternateRelations = array();
-		// 	self::_relations();
-		// }
+	public static function updateRelation($type, $options = array()){
+		$self = static::_object();
+		if(!empty($options) && array_key_exists($type, $self->_relationTypes)){
+			if(empty($self->_originalRelations)){
+				$self->_originalRelations = array(
+					'default' => (array)self::relations(null, 'default'),
+					'alternate' => (array)self::relations(null, 'alternate'),
+				);
+			}
+			$self->$type = array_merge_recursive($self->$type, $options);
+
+			$self->_relations = array();
+			$self->_alternateRelations = array();
+
+			self::_relations();
+		}
 	}
 
 
@@ -58,9 +63,9 @@ class Model extends \lithium\data\Model {
 	 * Reset relations to the originalRelations as specified in the model
 	 */
 	 public static function resetRelations(){
-		// $self = static::_object();
-		// $self->_relations = $self->_originalRelations['default'];
-		// $self->_alternateRelations = $self->_originalRelations['alternate'];
+		$self = static::_object();
+		$self->_relations = $self->_originalRelations['default'];
+		$self->_alternateRelations = $self->_originalRelations['alternate'];
 	}
 
 
@@ -90,18 +95,17 @@ class Model extends \lithium\data\Model {
 		//TODO, add general exception option & add mongo exception for non embedded
 		if(!empty($targetModel)){	
 
-			// Mongo says it supports relationships, but it doesn't
+			// MongoDB source says it supports relationships, but it doesnt appear to work
 			if(!isset($config['default'])){
-				$connection = Connections::get($targetModel::meta('connection'), array('config' => true, 'autoCreate' => false));
-				if($connection['type'] == 'MongoDb'){
+				$connectionConfig = $self::_connectionConfig();
+				if(isset($connectionConfig['type']) && $connectionConfig['type'] == 'MongoDb'){
 					$config['default'] = false;
+				}
 
-					$embeddedCheck = $targetModel::meta('embedded');
-
-					// for use with mongodb embedded source
-					if(!empty($embeddedCheck)){
-						$config['default'] = true;
-					}
+				$embeddedCheck = $targetModel::meta('embedded');
+				// for use with mongodb embedded source
+				if(!empty($embeddedCheck)){
+					$config['default'] = true;
 				}
 			}
 
@@ -230,30 +234,34 @@ class Model extends \lithium\data\Model {
 								$field = $class;
 							}
 
-							// grab all ids from ids to create one batch query
-							$records = array();
 							if (method_exists($data, 'map')) {
-								foreach($data as $k => $record){
-									$records[$k] = $record->to('array');
-								}
+								$records = $data;
 							} else {
-								$records[] = $data->to('array');
+								$records[] = $data;
 							}
 
+							// grab all ids from ids to create one batch query
 							foreach($records as $k => $record){
 								if(!empty($record[$from])){
-									$searchValue = (array)$record[$from];
+									$searchValue = $record[$from];
+									if(method_exists($searchValue, 'to')){
+										$searchValue = $searchValue->to('array');
+									}
+									if(!is_array($searchValue)){
+										$searchValue = array($searchValue);
+									}
 									// type casting for MySQL - always returns strings ????????????
 									if(method_exists($self, 'value')){
 										$casted = $self->value(array($from => $searchValue));
 										$searchValue = $casted[$from];					
-									}	
+									}
 									$searchValues = array_merge($searchValues, $searchValue);
 									$searchAssociations[$k] = $searchValue;					
 								} else {
 									$searchAssociations[$k] = null;
 								}
 							}
+
 
 							// if we have at least one id
 							if(!empty($searchValues)){
@@ -376,6 +384,16 @@ class Model extends \lithium\data\Model {
 
 			return $data;
 		});
+	}
+
+	protected static function _connectionConfig(){
+		if(empty(self::$_connectionConfig)){
+			$connection = self::meta('connection');
+			if(!empty($connection)){
+				self::$_connectionConfig = Connections::get($connection, array('config' => true));			
+			}
+		}
+		return self::$_connectionConfig;
 	}
 
 	protected static function _addRelations(){

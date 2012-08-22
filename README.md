@@ -114,6 +114,29 @@ However, when no data is returned, the behavior is slightly different. An empty 
 Notice here that each of the Players on the Team would also include and Agent on that Document, which would be a relationship specified inside the Players model.
 
 
+#### Modifying Relations
+In some cases you may wish to modify relations on a per use basis. In these cases you can call updateRelation, find, then resetRelations.
+
+~~~ php
+Team::updateRelation('hasMany', array(
+	'Players' => array(
+		'conditions' => array('age' > 30),
+	),
+));
+
+$team = Team::find('first', array(
+	'with' => array(
+		'Players',
+
+	),
+));
+
+Team::resetRelations();
+~~~
+
+In this case, $team->players would only be populated with players whose age is greater than 30.
+
+
 ## Some Notes
 1. Beta Beta Beta - Currently, this plugin is being used heavily in a read MongoDB & Solr production environment. However, writes will likely majorly screw up your db. Use with caution.
 
