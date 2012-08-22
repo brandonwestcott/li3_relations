@@ -206,7 +206,7 @@ class Model extends \lithium\data\Model {
 							$searchValues = array();
 
 							$keys = array_keys($relation['key']);
-							$from = (string)array_shift(array_keys($relation['key']));
+							$from = (string)array_shift($keys);
 							$to = (string)$relation['key'][$from];
 
 							if(!empty($relation['fieldName'])){
