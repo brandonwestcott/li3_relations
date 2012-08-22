@@ -83,6 +83,9 @@ class Model extends \lithium\data\Model {
 	 * @return object Returns an instance of the `Relationship` class that defines the connection.
 	 */
 	public static function bind($type, $name, array $config = array()) {
+		$defaults = array('default' => false);
+		$config += $defaults;
+
 		$self = static::_object();
 
 		if (!isset($config['to']) && isset($config['class'])) {
@@ -93,34 +96,7 @@ class Model extends \lithium\data\Model {
 		}
 
 		//TODO, add general exception option & add mongo exception for non embedded
-		if(!empty($targetModel)){	
-
-			// MongoDB source says it supports relationships, but it doesnt appear to work
-			if(!isset($config['default'])){
-				$connectionConfig = $self::_connectionConfig();
-				if(isset($connectionConfig['type']) && $connectionConfig['type'] == 'MongoDb'){
-					$config['default'] = false;
-				}
-
-				$embeddedCheck = $targetModel::meta('embedded');
-				// for use with mongodb embedded source
-				if(!empty($embeddedCheck)){
-					$config['default'] = true;
-				}
-			}
-
-			// if current Model & target join model are of same class, pass to generic lithium relation
-			$connection = static::connection();
-
-			if((!isset($config['default']) || $config['default'] == true) 
-				&& $connection::enabled('relationships') == true 
-				&& get_class($targetModel::connection()) == get_class($connection) 
-				&& $relationship = parent::bind($type, $name, $config)){
-					if(!empty($relationship)){
-						return $relationship;
-					}
-			}
-
+		if(!empty($targetModel) && $config['default'] == false){	
 			// continue on if default lithium relationship will not work
 			if(isset($config['fieldName'])){
 				$fieldName = $config['fieldName'];
@@ -138,13 +114,14 @@ class Model extends \lithium\data\Model {
 			$from = get_called_class();
 			$config += compact('type', 'name', 'key', 'from', 'fieldName');
 
+			$connection = static::connection();
 			$relationship = $connection->invokeMethod('_instance', array('relationship', $config));
 			if(!empty($relationship)){
 				$self->_alternateRelations[$name] = $relationship;
 				return null;
 			}
-
 		}
+		
 		return parent::bind($type, $name, $config);
 	}
 

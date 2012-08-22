@@ -2,7 +2,7 @@
 
 Now, don't get too extatic, this is in its early stages and only supports READ opperations & hasMany or hasOne. Hope to add support for full CRUD in the future.
 
-Simply, this is a plugin designed to add support to li3 for relations on a Model to Model basis seperate from connections. This allows not only relationship support for non supportted DBs, such as MongoDB, but also allows relationships to be cross connection/data sources. Such as Solr backed model to a Mongo backed Model. For the SQL lovers, the plugin checks to see if the current model and related model both are of the same source and support relations. (aka two MySQL backed models will continue to do a single query with a Left Join). When these same source relations are not avaible, the relationship will do a batch query to the targetted model.
+Simply, this is a plugin designed to add support to li3 for relations on a Model to Model basis seperate from connections. This allows not only relationship support for non supportted DBs, such as MongoDB, but also allows relationships to be cross connection/data sources. Such as Solr backed model to a Mongo backed Model. If you wish any given relation to use lithiums default relation bindings, just pass in default => false as an option in the relation (detailed below).
 
 ## Installation
 
@@ -87,6 +87,7 @@ fields 		- fields to pass to query
 order  		- order to pass to query
 conditions  - conditions to pass to query
 with 		- relations for the relation
+default     - set to true to use default lithium relations (aka for two MySql models), defaults to false
 
 #### Calling Relations
 
@@ -103,7 +104,7 @@ Team::find('first', array(
 ));
 ~~~
 
-In the case of using MongoDB, this would return a Document of a Team. On the team would exists 3 additional properties, players, coaches, and head_coaches. (Debating to make the reference live in a magic method vs a property - any input is welcome)
+In the case of using MongoDB, this would return a Document of a Team. On the team would exists 3 additional properties, players, coaches, and head_coaches. (Debating to make the reference live in a magic method vs a property - any input is welcome, aka ->players())
 
 hasOnes will be set as type Entity as specified by their source (MongoDB creates Document, SQL creates Record).
 
@@ -111,7 +112,7 @@ hasManies will be set as type Set as specified by their source (MongoDB creates 
 
 However, when no data is returned, the behavior is slightly different. An empty hasOne will return null, as is the behavior of calling Model::find('first'). An empty hasMany will continue to return an empty Set, as is the behavior of calling Model::find('all').
 
-Notice here that each of the Players on the Team would also include and Agent on that Document, which would be a relationship specified inside the Players model.
+Notice here that each of the Players on the Team would also include and Agent on that Document since the Players relation was specified with a "with". The Agent relationship would have been specified inside the Players model.
 
 
 #### Modifying Relations
@@ -139,6 +140,7 @@ In this case, $team->players would only be populated with players whose age is g
 
 ## Some Notes
 1. Beta Beta Beta - Currently, this plugin is being used heavily in a read MongoDB & Solr production environment. However, writes will likely majorly screw up your db. Use with caution.
+2.  For the SQL lovers, I've attempted to have the plugin checks to see if the current model and related model both are of the same source and support relations. (aka two MySQL backed models will continue to do a single query with a Left Join). However for some reason, calling ::connection on the target model within ::bind caused the app to blow up. Possible it is getting caught in a recursive loop somewhere. Avaiable on the default-relations branch.
 
 ## Plans for the future
 Need to get full CRUD on these relationships.
