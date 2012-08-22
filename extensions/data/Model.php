@@ -196,7 +196,7 @@ class Model extends \lithium\data\Model {
 							$relation = $alternateRelations[$relationKey]->data();
 
 							if(!is_int($key) && !empty($val)){
-							    $relation = array_merge_recursive($relations[$key]->data(), $val);							
+								$relation = array_merge_recursive($relation, $val);
 							}
 						}
 
