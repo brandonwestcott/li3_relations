@@ -11,6 +11,7 @@ namespace li3_relations\extensions\data;
 use \lithium\core\Libraries;
 use \lithium\util\Inflector;
 use \lithium\data\Connections;
+use \lithium\analysis\Logger;
 
 class Model extends \lithium\data\Model {
 
@@ -18,9 +19,8 @@ class Model extends \lithium\data\Model {
 
 	protected $_alternateRelations = array();
 
-	protected static $_connectionConfig = array();
-
 	public static function __init(){
+		static::_isBase(__CLASS__, true);		
 		parent::__init();
 		self::_addRelations();
 		self::_connectionFilters();
@@ -125,7 +125,6 @@ class Model extends \lithium\data\Model {
 				return null;
 			}
 		}
-		
 		return parent::bind($type, $name, $config);
 	}
 
@@ -171,183 +170,186 @@ class Model extends \lithium\data\Model {
 	protected static function _connectionFilters(){
 		$connection = static::connection();
 
-		$connection->applyFilter('read', function($self, $params, $chain){	
+		if(!isset($connection->_hasRelationFilter) || $connection->_hasRelationFilter == false){
+			$connection->_hasRelationFilter = true;
+			$connection->applyFilter('read', function($self, $params, $chain) {	
+				$data = $chain->next($self, $params, $chain);
 
-			$data = $chain->next($self, $params, $chain);
+				// check to see if there are any alternateRelations
+				if(!empty($params) && isset($params['options']) && isset($params['options']['alternateWith']) && !empty($params['options']['alternateWith'])){
+					$alternateRelations = $params['options']['model']::relations(null, 'alternate');
 
-			// check to see if there are any alternateRelations
-			if(!empty($params) && isset($params['options']) && isset($params['options']['alternateWith']) && !empty($params['options']['alternateWith'])){
-				$alternateRelations = $params['options']['model']::relations(null, 'alternate');
+					if(!empty($alternateRelations)){
 
-				if(!empty($alternateRelations)){
-
-					foreach($params['options']['alternateWith'] as $key => $val){
-						// TODO add support for 'Relation' => array(options)
-						if (is_int($key)) {
-							$relationKey = $val;
-						} else {
-							$relationKey = $key;
-						}
-
-						$relation = null;
-
-						if(isset($alternateRelations[$relationKey])){
-							// get options from relationship
-							$relation = $alternateRelations[$relationKey]->data();
-
-							if(!is_int($key) && !empty($val)){
-							    $relation = array_merge_recursive($relations[$key]->data(), $val);							
-							}
-						}
-
-						if(!empty($relation)) {
-							$relationModel = $relation['to'];
-							$searchAssociations = array();
-							$searchValues = array();
-
-							$keys = array_keys($relation['key']);
-							$from = (string)array_shift($keys);
-							$to = (string)$relation['key'][$from];
-
-							if(!empty($relation['fieldName'])){
-								$field = $relation['fieldName'];
+						foreach($params['options']['alternateWith'] as $key => $val){
+							// TODO add support for 'Relation' => array(options)
+							if (is_int($key)) {
+								$relationKey = $val;
 							} else {
-								$field = $class;
+								$relationKey = $key;
 							}
 
-							if (method_exists($data, 'map')) {
-								$records = $data;
-							} else {
-								$records[] = $data;
-							}
+							$relation = null;
 
-							// grab all ids from ids to create one batch query
-							foreach($records as $k => $record){
-								if(!empty($record[$from])){
-									$searchValue = $record[$from];
-									if(method_exists($searchValue, 'to')){
-										$searchValue = $searchValue->to('array');
-									}
-									if(!is_array($searchValue)){
-										$searchValue = array($searchValue);
-									}
-									// type casting for MySQL - always returns strings ????????????
-									if(method_exists($self, 'value')){
-										$casted = $self->value(array($from => $searchValue));
-										$searchValue = $casted[$from];					
-									}
-									$searchValues = array_merge($searchValues, $searchValue);
-									$searchAssociations[$k] = $searchValue;					
-								} else {
-									$searchAssociations[$k] = null;
+							if(isset($alternateRelations[$relationKey])){
+								// get options from relationship
+								$relation = $alternateRelations[$relationKey]->data();
+
+								if(!is_int($key) && !empty($val)){
+								    $relation = array_merge_recursive($relations[$key]->data(), $val);							
 								}
 							}
 
+							if(!empty($relation)) {
+								$relationModel = $relation['to'];
+								$searchAssociations = array();
+								$searchValues = array();
 
-							// if we have at least one id
-							if(!empty($searchValues)){
-								$searchValues = array_unique($searchValues);
+								$keys = array_keys($relation['key']);
+								$from = (string)array_shift($keys);
+								$to = (string)$relation['key'][$from];
 
-								$relation['conditions'][$to] = $searchValues;
-								$unsetSearchKey = false;
-								if(is_array($relation['fields'])){
-									if(!in_array($to, $relation['fields'])){
-										$relation['fields'][] = $to;
-										$unsetSearchKey = true;
-									}
+								if(!empty($relation['fieldName'])){
+									$field = $relation['fieldName'];
 								} else {
-									$relation['fields'] = null;
+									$field = $class;
 								}
 
-								$relationalData = $relationModel::find('all', $relation);
+								if (method_exists($data, 'map')) {
+									$records = $data;
+								} else {
+									$records[] = $data;
+								}
 
-								if(!empty($relationalData)){
-									$results = array();
-									foreach($relationalData as $item){
-										if(isset($item->$to)){
-											if(method_exists($item->$to, 'to')){
-												$ids = $item->$to->to('array');
-											} else {
-												$ids = array((string)$item->$to);
-											}
+								// grab all ids from ids to create one batch query
+								foreach($records as $k => $record){
+									if(!empty($record[$from])){
+										$searchValue = $record[$from];
+										if(method_exists($searchValue, 'to')){
+											$searchValue = $searchValue->to('array');
 										}
-										foreach($ids as $id){
-											if(!empty($id)){
-												if($unsetSearchKey === true && isset($item->$to)){
-													unset($item->$to);
+										if(!is_array($searchValue)){
+											$searchValue = array($searchValue);
+										}
+										// type casting for MySQL - always returns strings ????????????
+										if(method_exists($self, 'value')){
+											$casted = $self->value(array($from => $searchValue));
+											$searchValue = $casted[$from];					
+										}
+										$searchValues = array_merge($searchValues, $searchValue);
+										$searchAssociations[$k] = $searchValue;					
+									} else {
+										$searchAssociations[$k] = null;
+									}
+								}
+
+
+								// if we have at least one id
+								if(!empty($searchValues)){
+									$searchValues = array_unique($searchValues);
+
+									$relation['conditions'][$to] = $searchValues;
+									$unsetSearchKey = false;
+									if(is_array($relation['fields'])){
+										if(!in_array($to, $relation['fields'])){
+											$relation['fields'][] = $to;
+											$unsetSearchKey = true;
+										}
+									} else {
+										$relation['fields'] = null;
+									}
+
+									$relationalData = $relationModel::find('all', $relation);
+
+									if(!empty($relationalData)){
+										$results = array();
+										foreach($relationalData as $item){
+											if(isset($item->$to)){
+												if(method_exists($item->$to, 'to')){
+													$ids = $item->$to->to('array');
+												} else {
+													$ids = array((string)$item->$to);
 												}
-												$results[$id][] = $item;
 											}
-										}
-									}
-								}	
-							}
-	
-							// check to make sure we have at least one association
-							if(!empty($searchAssociations) && isset($results)){
-								foreach($searchAssociations as $itemKey => $value){
-
-									if(isset($data[$itemKey])){
-
-										// create an associationResult to hold all of this items related data
-										$associationResult = array();
-
-										if(!is_null($value) && isset($results)){
-											if(is_array($value)){
-												// sort values to populate in the order returned by mongo result
-												$value = array_keys(array_intersect_key($results, array_fill_keys($value, null)));
-												foreach($value as $searchKey){
-													$searchKey = (string)$searchKey;
-													if(isset($results[$searchKey])){
-														$associationResult = array_merge($associationResult, $results[$searchKey]);
+											foreach($ids as $id){
+												if(!empty($id)){
+													if($unsetSearchKey === true && isset($item->$to)){
+														unset($item->$to);
 													}
+													$results[$id][] = $item;
 												}
+											}
+										}
+									}	
+								}
+		
+								// check to make sure we have at least one association
+								if(!empty($searchAssociations) && isset($results)){
+									foreach($searchAssociations as $itemKey => $value){
 
-												// add some processing for grouping - this was added for mongo, may not be needed
-												if(isset($relation['group'])){
-													$groupedResult = array();
-													foreach($associationResult as $k => $result){
-														$comparison = array();
-														foreach($relation['group'] as $group_item){
-															if(isset($result->$group_item)){
-																$comparison[] = $result->$group_item;
-															} else {
-																$comparison[] = null;
+										if(isset($data[$itemKey])){
+
+											// create an associationResult to hold all of this items related data
+											$associationResult = array();
+
+											if(!is_null($value) && isset($results)){
+												if(is_array($value)){
+													// sort values to populate in the order returned by mongo result
+													$value = array_keys(array_intersect_key($results, array_fill_keys($value, null)));
+													foreach($value as $searchKey){
+														$searchKey = (string)$searchKey;
+														if(isset($results[$searchKey])){
+															$associationResult = array_merge($associationResult, $results[$searchKey]);
+														}
+													}
+
+													// add some processing for grouping - this was added for mongo, may not be needed
+													if(isset($relation['group'])){
+														$groupedResult = array();
+														foreach($associationResult as $k => $result){
+															$comparison = array();
+															foreach($relation['group'] as $group_item){
+																if(isset($result->$group_item)){
+																	$comparison[] = $result->$group_item;
+																} else {
+																	$comparison[] = null;
+																}
+															}
+															if(!empty($comparison)){
+																$groupedResult[$k] = json_encode($comparison);
 															}
 														}
-														if(!empty($comparison)){
-															$groupedResult[$k] = json_encode($comparison);
-														}
+														$groupedResult = array_unique($groupedResult);
+														$associationResult = array_values(array_intersect_key($associationResult, $groupedResult));
 													}
-													$groupedResult = array_unique($groupedResult);
-													$associationResult = array_values(array_intersect_key($associationResult, $groupedResult));
 												}
 											}
-										}
 
-										$relationConnection = $relationModel::connection();	
-										// check to see if we have a result && if relation type is hasOne, if so shift result to one element
-										if(count($associationResult) > 0){
-											if($relation['type'] == 'hasOne'){
-												$associationResult = array_shift($associationResult);
+											$relationConnection = $relationModel::connection();	
+											// check to see if we have a result && if relation type is hasOne, if so shift result to one element
+											if(count($associationResult) > 0){
+												if($relation['type'] == 'hasOne'){
+													$associationResult = array_shift($associationResult);
+												} else {
+													$associationResult = $relationConnection->item($relationModel, $associationResult, array('class' => 'set'));											
+												}
+											// else if result is empty, create default empty response. hasMany defaults to connection collection & hasOne defaults to null - Same response as provided via ::find('all') vs ::find('first')
 											} else {
-												$associationResult = $relationConnection->item($relationModel, $associationResult, array('class' => 'set'));											
+												if($relation['type'] == 'hasOne'){
+													$associationResult = null;
+												} else {
+													$associationResult = $relationConnection->item($relationModel, array(), array('class' => 'set'));											
+												}
 											}
-										// else if result is empty, create default empty response. hasMany defaults to connection collection & hasOne defaults to null - Same response as provided via ::find('all') vs ::find('first')
-										} else {
-											if($relation['type'] == 'hasOne'){
-												$associationResult = null;
-											} else {
-												$associationResult = $relationConnection->item($relationModel, array(), array('class' => 'set'));											
-											}
-										}
 
-										// finally, add the relation
-								        if (method_exists($data, 'map')) {
-											$data[$itemKey]->$field = $associationResult;
-									    } else {
-											$data->$field = $associationResult;
-									    }
+											// finally, add the relation
+									        if (method_exists($data, 'map')) {
+												$data[$itemKey]->$field = $associationResult;
+										    } else {
+												$data->$field = $associationResult;
+										    }
+
+										}
 
 									}
 
@@ -360,21 +362,9 @@ class Model extends \lithium\data\Model {
 					}
 
 				}
-
-			}
-
-			return $data;
-		});
-	}
-
-	protected static function _connectionConfig(){
-		if(empty(self::$_connectionConfig)){
-			$connection = self::meta('connection');
-			if(!empty($connection)){
-				self::$_connectionConfig = Connections::get($connection, array('config' => true));			
-			}
+				return $data;
+			});
 		}
-		return self::$_connectionConfig;
 	}
 
 	protected static function _addRelations(){
@@ -393,7 +383,6 @@ class Model extends \lithium\data\Model {
 					}
 				}
 			}
-
 		   	return $chain->next($self, $params, $chain);
 		};
 		
