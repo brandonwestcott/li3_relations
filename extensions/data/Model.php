@@ -89,11 +89,15 @@ class Model extends \lithium\data\Model {
 		$self = static::_object();
 
 		if (!isset($config['to']) && isset($config['class'])) {
-			$config['to'] = Libraries::locate('models', $config['class']);
-			$targetModel = $config['to'];
-		} else {
-			$targetModel = Libraries::locate('models', $config['class']);
+			$config['to'] = $config['class'];
 		}
+		if(!isset($config['to'])){
+			$config['to'] = $name;
+		}
+
+		$config['to'] = Libraries::locate('models', $config['to']);
+
+		$targetModel = $config['to'];
 
 		//TODO, add general exception option & add mongo exception for non embedded
 		if(!empty($targetModel) && $config['default'] == false){	
