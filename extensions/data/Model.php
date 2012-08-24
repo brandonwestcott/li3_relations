@@ -244,7 +244,8 @@ class Model extends \lithium\data\Model {
 								// grab all ids from ids to create one batch query
 								foreach($records as $k => $record){
 									$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
-									if(!empty($searchValue)){
+									$lastKey = array_pop(explode('.', $from));
+									if(!empty($searchValue) && !isset($searchValue[0][$lastKey])){
 										if(!is_array($searchValue)){
 											$searchValue = array($searchValue);
 										}
