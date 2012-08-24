@@ -371,13 +371,12 @@ class Model extends \lithium\data\Model {
 		$filter = function($self, $params, $chain) {
 			$object = new $self();
 
-			$alternateWithKeys = array();
-			$relations = $self::relations(null, 'alternate');
+			$alternateRelations = $self::relations(null, 'alternate');
 
 			if(!empty($params['options']['with'])){	
 				foreach($params['options']['with'] as $k => $v){
 					// if key is name
-					if((is_string($k) && isset($relations[$k])) || isset($relations[$v])){
+					if((is_string($k) && isset($alternateRelations[$k])) || (is_int($k) && isset($alternateRelations[$v]))){
 						$params['options']['alternateWith'][$k] = $v;
 						unset($params['options']['with'][$k]);
 					}
