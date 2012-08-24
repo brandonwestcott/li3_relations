@@ -94,6 +94,16 @@ class Model extends \lithium\data\Model {
 	 */
 	public static function bind($type, $name, array $config = array()) {
 		$defaults = array('default' => false);
+
+		// li3_embedded catch to make embedding easier
+		if(isset($config['embedded']) && !isset($config['default'])){
+			if(!empty($config['embedded'])){
+				$config['default'] = true;
+			} else {
+				$config['default'] = false;			
+			}
+		}
+
 		$config += $defaults;
 
 		$self = static::_object();
