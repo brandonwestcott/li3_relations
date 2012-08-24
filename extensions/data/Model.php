@@ -11,7 +11,7 @@ namespace li3_relations\extensions\data;
 use \lithium\core\Libraries;
 use \lithium\util\Inflector;
 use \lithium\data\Connections;
-use \lithium\analysis\Logger;
+use \lithium\util\Set;
 
 class Model extends \lithium\data\Model {
 
@@ -49,10 +49,20 @@ class Model extends \lithium\data\Model {
 					'alternate' => (array)self::relations(null, 'alternate'),
 				);
 			}
+
 			$self->$type = array_merge_recursive($self->$type, $options);
 
 			$self->_relations = array();
 			$self->_alternateRelations = array();
+
+			foreach($self->$type  as $name => $vals){
+				foreach(array('to', 'from', 'fieldName', 'default', 'embedded') as $field){
+					// these should not be arrays, pop off the last one
+					if(isset($vals[$field]) && is_array($vals[$field])){
+						$self->{$type}[$name][$field] = array_pop($vals[$field]);
+					}
+				}
+			}
 
 			self::_relations();
 		}
@@ -100,7 +110,7 @@ class Model extends \lithium\data\Model {
 		$targetModel = $config['to'];
 
 		//TODO, add general exception option & add mongo exception for non embedded
-		if(!empty($targetModel) && $config['default'] == false){	
+		if(!empty($targetModel) && $config['default'] === false){	
 			// continue on if default lithium relationship will not work
 			if(isset($config['fieldName'])){
 				$fieldName = $config['fieldName'];
@@ -223,26 +233,22 @@ class Model extends \lithium\data\Model {
 
 								// grab all ids from ids to create one batch query
 								foreach($records as $k => $record){
-									if(!empty($record[$from])){
-										$searchValue = $record[$from];
-										if(method_exists($searchValue, 'to')){
-											$searchValue = $searchValue->to('array');
-										}
+									$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
+									if(!empty($searchValue)){
 										if(!is_array($searchValue)){
 											$searchValue = array($searchValue);
 										}
 										// type casting for MySQL - always returns strings ????????????
-										if(method_exists($self, 'value')){
-											$casted = $self->value(array($from => $searchValue));
-											$searchValue = $casted[$from];					
-										}
+										// if(method_exists($self, 'value')){
+										// 	$casted = $self->value(array($from => $searchValue));
+										// 	$searchValue = $casted[$from];					
+										// }
 										$searchValues = array_merge($searchValues, $searchValue);
 										$searchAssociations[$k] = $searchValue;					
 									} else {
 										$searchAssociations[$k] = null;
 									}
 								}
-
 
 								// if we have at least one id
 								if(!empty($searchValues)){
