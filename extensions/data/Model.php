@@ -245,15 +245,19 @@ class Model extends \lithium\data\Model {
 								foreach($records as $k => $record){
 									$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
 									$lastKey = array_pop(explode('.', $from));
-									if(!empty($searchValue) && !isset($searchValue[0][$lastKey])){
+
+
+									if(!empty($searchValue) && (!is_array($searchValue[0]) || (is_array($searchValue[0]) && !isset($searchValue[0][$lastKey])))){
 										if(!is_array($searchValue)){
 											$searchValue = array($searchValue);
 										}
+										
 										// type casting for MySQL - always returns strings ????????????
 										// if(method_exists($self, 'value')){
 										// 	$casted = $self->value(array($from => $searchValue));
 										// 	$searchValue = $casted[$from];					
 										// }
+
 										$searchValues = array_merge($searchValues, $searchValue);
 										$searchAssociations[$k] = $searchValue;					
 									} else {
