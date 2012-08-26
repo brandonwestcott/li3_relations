@@ -227,6 +227,7 @@ class Model extends \lithium\data\Model {
 
 								$keys = array_keys($relation['key']);
 								$from = (string)array_shift($keys);
+								$fromArray = explode('.', $from);
 								$to = (string)$relation['key'][$from];
 
 								if(!empty($relation['fieldName'])){
@@ -244,7 +245,7 @@ class Model extends \lithium\data\Model {
 								// grab all ids from ids to create one batch query
 								foreach($records as $k => $record){
 									$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
-									$lastKey = array_pop(explode('.', $from));
+									$lastKey = array_pop($fromArray);
 
 
 									if(!empty($searchValue) && (!is_array($searchValue[0]) || (is_array($searchValue[0]) && !isset($searchValue[0][$lastKey])))){
