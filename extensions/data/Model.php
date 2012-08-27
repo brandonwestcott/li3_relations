@@ -227,6 +227,7 @@ class Model extends \lithium\data\Model {
 
 								$keys = array_keys($relation['key']);
 								$from = (string)array_shift($keys);
+								$fromArray = explode('.', $from);
 								$to = (string)$relation['key'][$from];
 
 								if(!empty($relation['fieldName'])){
