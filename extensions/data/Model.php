@@ -244,14 +244,13 @@ class Model extends \lithium\data\Model {
 								// grab all ids from ids to create one batch query
 								foreach($records as $k => $record){
 									$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
-									$lastKey = array_pop(explode('.', $from));
-
+									$lastKey = array_slice($fromArray, -1, 1);
+									$lastKey = $lastKey[0];
 
 									if(!empty($searchValue) && (!is_array($searchValue[0]) || (is_array($searchValue[0]) && !isset($searchValue[0][$lastKey])))){
 										if(!is_array($searchValue)){
 											$searchValue = array($searchValue);
 										}
-										
 										// type casting for MySQL - always returns strings ????????????
 										// if(method_exists($self, 'value')){
 										// 	$casted = $self->value(array($from => $searchValue));
