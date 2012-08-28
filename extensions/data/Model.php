@@ -196,7 +196,7 @@ class Model extends \lithium\data\Model {
 				$data = $chain->next($self, $params, $chain);
 
 				// check to see if there are any alternateRelations
-				if(!empty($params) && isset($params['options']) && isset($params['options']['alternateWith']) && !empty($params['options']['alternateWith'])){
+				if(!empty($data) && !empty($params) && isset($params['options']) && isset($params['options']['alternateWith']) && !empty($params['options']['alternateWith'])){
 					$alternateRelations = $params['options']['model']::relations(null, 'alternate');
 
 					if(!empty($alternateRelations)){
@@ -244,22 +244,26 @@ class Model extends \lithium\data\Model {
 
 								// grab all ids from ids to create one batch query
 								foreach($records as $k => $record){
-									$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
-									$lastKey = array_slice($fromArray, -1, 1);
-									$lastKey = $lastKey[0];
+									if(method_exists($record, 'to')){
+										$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
+										$lastKey = array_slice($fromArray, -1, 1);
+										$lastKey = $lastKey[0];
 
-									if(!empty($searchValue) && (!is_array($searchValue[0]) || (is_array($searchValue[0]) && !isset($searchValue[0][$lastKey])))){
-										if(!is_array($searchValue)){
-											$searchValue = array($searchValue);
+										if(!empty($searchValue) && (!is_array($searchValue[0]) || (is_array($searchValue[0]) && !isset($searchValue[0][$lastKey])))){
+											if(!is_array($searchValue)){
+												$searchValue = array($searchValue);
+											}
+											// type casting for MySQL - always returns strings ????????????
+											// if(method_exists($self, 'value')){
+											// 	$casted = $self->value(array($from => $searchValue));
+											// 	$searchValue = $casted[$from];					
+											// }
+
+											$searchValues = array_merge($searchValues, $searchValue);
+											$searchAssociations[$k] = $searchValue;					
+										} else {
+											$searchAssociations[$k] = null;
 										}
-										// type casting for MySQL - always returns strings ????????????
-										// if(method_exists($self, 'value')){
-										// 	$casted = $self->value(array($from => $searchValue));
-										// 	$searchValue = $casted[$from];					
-										// }
-
-										$searchValues = array_merge($searchValues, $searchValue);
-										$searchAssociations[$k] = $searchValue;					
 									} else {
 										$searchAssociations[$k] = null;
 									}
