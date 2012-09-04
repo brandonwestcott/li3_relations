@@ -4,6 +4,8 @@ Now, don't get too extatic, this is in its early stages and only supports READ o
 
 Simply, this is a plugin designed to add support to li3 for relations on a Model to Model basis seperate from connections. This allows not only relationship support for non supportted DBs, such as MongoDB, but also allows relationships to be cross connection/data sources. Such as Solr backed model to a Mongo backed Model. If you wish any given relation to use lithiums default relation bindings, just pass in default => false as an option in the relation (detailed below).
 
+It is likely that this type of Model -> Model support will never exist inside of lithium directly. However, with the powerful data sources lithium provides, this plugin becomes essential.
+
 ## Installation
 
 ### Use Composer
@@ -39,7 +41,7 @@ Then in any model, extend \li3_relations\extensions\data\Model.php
 ~~~ php
 namespace app\models;
 
-class AppModel extends \app\extensions\data\Model {
+class AppModel extends \li3_relations\extensions\data\Model {
 
 ~~~
 
@@ -71,8 +73,11 @@ class Team extends  \li3_relations\extensions\data\Model.php {
 	public $hasOne = array(
 		'HeadCoach' => array(
 			'to'     => 'Coaches',
-			'key'       => array('head_coach_id' => '_id'),
+			'key'       => array('coach_ids' => '_id'),
 			'fieldName' => 'head_coach',
+			'conditions' => array(
+				'coach_level' => 'head'
+			),
 		),
 	);
 
@@ -81,13 +86,13 @@ class Team extends  \li3_relations\extensions\data\Model.php {
 Key specified is the name used to refernce the relation on a find query.
 
 Options are:
-to     		- specifieds target model
-fieldName   - field to create relation on - defaults to camelCased Name
-fields 		- fields to pass to query
-order  		- order to pass to query
-conditions  - conditions to pass to query
-with 		- relations for the relation
-default     - set to true to use default lithium relations (aka for two MySql models), defaults to false
+to     		- specifieds target model  
+fieldName   - field to create relation on - defaults to camelCased Name  
+fields 		- fields to pass to query  
+order  		- order to pass to query  
+conditions  - conditions to pass to query  
+with 		- relations for the relation  
+default     - set to true to use default lithium relations (aka for two MySql models), defaults to false  
 
 #### Calling Relations
 
@@ -143,7 +148,7 @@ In this case, $team->players would only be populated with players whose age is g
 2.  For the SQL lovers, I've attempted to have the plugin checks to see if the current model and related model both are of the same source and support relations. (aka two MySQL backed models will continue to do a single query with a Left Join). However for some reason, calling ::connection on the target model within ::bind caused the app to blow up. Possible it is getting caught in a recursive loop somewhere. Avaiable on the default-relations branch.
 
 ## Plans for the future
-Need to get full CRUD on these relationships.
+Need to get full CRUD on these relationships. Eventually I hope the li3 community sees this as a necessity and the features will be added into the core.
 
 ## Collaborate
 Please fork and contribute!
