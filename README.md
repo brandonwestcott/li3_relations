@@ -145,7 +145,7 @@ In this case, $team->players would only be populated with players whose age is g
 
 ## Some Notes
 1. Beta Beta Beta - Currently, this plugin is being used heavily in a read MongoDB & Solr production environment. However, writes will likely majorly screw up your db. Use with caution.
-2.  For the SQL lovers, I've attempted to have the plugin checks to see if the current model and related model both are of the same source and support relations. (aka two MySQL backed models will continue to do a single query with a Left Join). However for some reason, calling ::connection on the target model within ::bind caused the app to blow up. Possible it is getting caught in a recursive loop somewhere. Avaiable on the default-relations branch.
+2.  For the SQL lovers, I've attempted to have the plugin check to see if the current model and related model both are of the same source and support relations. (aka two MySQL backed models will continue to do a single query with a Left Join). I believe the bug exists in the binding the filter multiple times onto a connection. This bug was fixed in master and I hope to fix this soon in the default-relations branch.
 
 ## Plans for the future
 Need to get full CRUD on these relationships. Eventually I hope the li3 community sees this as a necessity and the features will be added into the core.
