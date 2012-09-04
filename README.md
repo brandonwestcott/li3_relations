@@ -126,21 +126,20 @@ In some cases you may wish to modify relations on a per use basis. In these case
 ~~~ php
 Team::updateRelation('hasMany', array(
 	'Players' => array(
-		'conditions' => array('age' > 30),
+		'conditions' => array('age' => 30),
 	),
 ));
 
 $team = Team::find('first', array(
 	'with' => array(
 		'Players',
-
 	),
 ));
 
 Team::resetRelations();
 ~~~
 
-In this case, $team->players would only be populated with players whose age is greater than 30.
+In this case, $team->players would only be populated with players whose age is 30.
 
 
 ## Some Notes
