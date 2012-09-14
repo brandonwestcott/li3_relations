@@ -52,16 +52,18 @@ class Model extends \lithium\data\Model {
 
 			$self->$type = array_merge_recursive($self->$type, $options);
 
-			$self->_relations = array();
-			$self->_alternateRelations = array();
-
-			foreach($self->$type  as $name => $vals){
+			foreach($options  as $name => $vals){
 				foreach(array('to', 'from', 'fieldName', 'default', 'embedded') as $field){
 					// these should not be arrays, pop off the last one
 					if(isset($vals[$field]) && is_array($vals[$field])){
 						$self->{$type}[$name][$field] = array_pop($vals[$field]);
 					}
 				}
+			}
+
+			// instead of calling _relations - only bind whats changed
+			foreach ($options as $name => $config) {
+				static::bind($type, $name, (array) $config);
 			}
 
 			self::_relations();
@@ -201,6 +203,12 @@ class Model extends \lithium\data\Model {
 
 					if(!empty($alternateRelations)){
 
+						if (method_exists($data, 'map')) {
+							$records = $data->to('array');
+						} else {
+							$records[] = $data->to('array');
+						}
+
 						foreach($params['options']['alternateWith'] as $key => $val){
 							// TODO add support for 'Relation' => array(options)
 							if (is_int($key)) {
@@ -236,34 +244,19 @@ class Model extends \lithium\data\Model {
 									$field = $class;
 								}
 
-								if (method_exists($data, 'map')) {
-									$records = $data;
-								} else {
-									$records[] = $data;
-								}
-
 								// grab all ids from ids to create one batch query
 								foreach($records as $k => $record){
-									if(method_exists($record, 'to')){
-										$searchValue = Set::extract($record->to('array'), '/'.str_replace('.', '/', $from));
-										$lastKey = array_slice($fromArray, -1, 1);
-										$lastKey = $lastKey[0];
+									$searchValue = Set::extract($record, '/'.str_replace('.', '/', $from));
+									$lastKey = array_slice($fromArray, -1, 1);
+									$lastKey = $lastKey[0];
 
-										if(!empty($searchValue) && (!is_array($searchValue[0]) || (is_array($searchValue[0]) && !isset($searchValue[0][$lastKey])))){
-											if(!is_array($searchValue)){
-												$searchValue = array($searchValue);
-											}
-											// type casting for MySQL - always returns strings ????????????
-											// if(method_exists($self, 'value')){
-											// 	$casted = $self->value(array($from => $searchValue));
-											// 	$searchValue = $casted[$from];					
-											// }
-
-											$searchValues = array_merge($searchValues, $searchValue);
-											$searchAssociations[$k] = $searchValue;					
-										} else {
-											$searchAssociations[$k] = null;
+									if(!empty($searchValue) && (!is_array($searchValue[0]) || (is_array($searchValue[0]) && !isset($searchValue[0][$lastKey])))){
+										if(!is_array($searchValue)){
+											$searchValue = array($searchValue);
 										}
+
+										$searchValues = array_merge($searchValues, $searchValue);
+										$searchAssociations[$k] = $searchValue;					
 									} else {
 										$searchAssociations[$k] = null;
 									}
@@ -289,6 +282,7 @@ class Model extends \lithium\data\Model {
 									if(!empty($relationalData)){
 										$results = array();
 										foreach($relationalData as $item){
+											$ids = array();
 											if(isset($item->$to)){
 												if(method_exists($item->$to, 'to')){
 													$ids = $item->$to->to('array');
