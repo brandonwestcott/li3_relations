@@ -63,10 +63,8 @@ class Model extends \lithium\data\Model {
 
 			// instead of calling _relations - only bind whats changed
 			foreach ($options as $name => $config) {
-				static::bind($type, $name, (array) $config);
+				self::bind($type, $name, $self->{$type}[$name]);
 			}
-
-			self::_relations();
 		}
 	}
 
