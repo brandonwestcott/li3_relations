@@ -196,7 +196,7 @@ class Model extends \lithium\data\Model {
 				$data = $chain->next($self, $params, $chain);
 
 				// check to see if there are any alternateRelations
-				if(!empty($data) && !empty($params) && isset($params['options']) && isset($params['options']['alternateWith']) && !empty($params['options']['alternateWith'])){
+				if(!empty($data) && is_object($data) && !empty($params) && isset($params['options']) && isset($params['options']['alternateWith']) && !empty($params['options']['alternateWith'])){
 					$alternateRelations = $params['options']['model']::relations(null, 'alternate');
 
 					if(!empty($alternateRelations)){
@@ -281,7 +281,7 @@ class Model extends \lithium\data\Model {
 										$results = array();
 										foreach($relationalData as $item){
 											$ids = array();
-											if(isset($item->$to)){
+											if(is_object($item) && isset($item->$to)){
 												if(method_exists($item->$to, 'to')){
 													$ids = $item->$to->to('array');
 												} else {
